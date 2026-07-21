@@ -49,7 +49,15 @@ st.markdown("""
 st.sidebar.title("📜 የጥንታዊ ብራና መቆጣጠሪያ")
 st.sidebar.write("እዚህ ጋር ማስተካከያዎችን ያድርጉ።")
 
-api_key = st.sidebar.text_input("የ Gemini API Key ያስገቡ፦", type="password")
+# አዲሱ ብልህ ኮድ (Smart API Key Loader)
+# በመጀመሪያ በሰርቨሩ ውስጥ የተደበቀ ቁልፍ ካለ ይፈትሻል
+api_key = os.environ.get("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else None
+
+# የተደበቀ ቁልፍ ከሌለ (ለምሳሌ በኮምፒውተርህ ላይ ስትሞክረው) ተጠቃሚው እንዲያስገባ ይጠይቃል
+if not api_key:
+    api_key = st.sidebar.text_input("Enter Gemini API Key:", type="password")
+else:
+    st.sidebar.success("🔑 AI Engine Active!")
 uploaded_file = st.sidebar.file_uploader("የጥንታዊ መጻሕፍት/ብራናዎችን ይጫኑ (PDF/TXT):", type=["pdf", "txt"])
 
 # የባለቤትነት ክሬዲት (Developer Credit)
