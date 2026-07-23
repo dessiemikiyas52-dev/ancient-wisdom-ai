@@ -49,8 +49,7 @@ st.markdown("""
 st.sidebar.title("📜 የጥንታዊ ብራና መቆጣጠሪያ")
 st.sidebar.write("እዚህ ጋር ማስተካከያዎችን ያድርጉ።")
 
-# አዲሱ ብልህ ኮድ (Smart API Key Loader)
-# በመጀመሪያ በሰርቨሩ ውስጥ የተደበቀ ቁልፍ ካለ ይፈትሻል
+# አዲሱ ብልህ ኮድ (Smart API Key Loader) - በመጀመሪያ በሰርቨሩ ውስጥ የተደበቀ ቁልፍ ካለ ይፈትሻል
 api_key = os.environ.get("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else None
 
 # የተደበቀ ቁልፍ ከሌለ (ለምሳሌ በኮምፒውተርህ ላይ ስትሞክረው) ተጠቃሚው እንዲያስገባ ይጠይቃል
@@ -58,6 +57,7 @@ if not api_key:
     api_key = st.sidebar.text_input("Enter Gemini API Key:", type="password")
 else:
     st.sidebar.success("🔑 AI Engine Active!")
+
 uploaded_file = st.sidebar.file_uploader("የጥንታዊ መጻሕፍት/ብራናዎችን ይጫኑ (PDF/TXT):", type=["pdf", "txt"])
 
 # የባለቤትነት ክሬዲት (Developer Credit)
@@ -75,7 +75,7 @@ if "file_ref" not in st.session_state:
 if "file_name" not in st.session_state:
     st.session_state.file_name = ""
 
-# አዲስ ፋይል ከተጫነ መረጃውን ማደስ
+# አዲስ ፋይል ከተጫነ የድሮውን ማህደረ ትውስታ ማጽዳት
 if uploaded_file is not None and uploaded_file.name != st.session_state.file_name:
     st.session_state.file_ref = None
     st.session_state.file_name = uploaded_file.name
@@ -96,19 +96,25 @@ if not api_key:
     st.warning("⚠️ እባክህ መጽሐፉን ሰርቨር ላይ ለመጫን በጎን በኩል (Settings Panel) የ Gemini API Key አስገባ።")
     st.stop()
 
-# 5. መጽሐፉን ወደ ጉግል ሰርቨር መጫን (በአንድ ፋይል አንድ ጊዜ ብቻ)
+# 5. መጽሐፉን ወደ ጉግል ሰርቨር መጫን (በአንድ ፋይል አንድ ጊዜ ብቻ - የስም ስህተትን ለመከላከል የተስተካከለ)
 if st.session_state.file_ref is None:
     with st.spinner("መጽሐፉን ወደ Google AI Cloud በመጫን ላይ ነው..."):
         try:
-            temp_filename = f"temp_{uploaded_file.name}"
-            with open(temp_filename, "wb") as f:
-                f.write(uploaded_file.getbuffer())
+            # የፋይሉን መድረሻ (.pdf ወይም .txt) መለየት
+            file_extension = os.path.splitext(uploaded_file.name)[1]
             
+            # ዊንዶውስ የአማርኛ ስሞችን ሲያነብ እንዳይሳሳት ስሙን ወደ እንግሊዝኛ 'temp_upload' መቀየር
+            temp_filename = f"temp_upload{file_extension}"
+            
+            # ፋይሉን በጊዜያዊነት መጻፍ
+            with open(temp_filename, "wb") as f:
+                f.write(uploaded_file.getbuffer())# የጉግል AI ደንበኛን መፍጠር እና ፋይሉን መጫን
             client = genai.Client(api_key=api_key)
             uploaded_file_ref = client.files.upload(file=temp_filename)
             
             st.session_state.file_ref = uploaded_file_ref
             
+            # ጊዜያዊ ፋይሉን ማጥፋት
             if os.path.exists(temp_filename):
                 os.remove(temp_filename)
                 
@@ -124,6 +130,7 @@ st.markdown("### ✨ ፈጣን የውይይት መጀመሪያዎች (Quick Quer
 col1, col2, col3 = st.columns(3)
 
 clicked_query = None
+
 with col1:
     if st.button("📜 የግዕዝ ጽሑፍ ትንታኔና ትርጉም"):
         clicked_query = "በዚህ መጽሐፍ ውስጥ የሚገኙትን ዋና ዋና የግዕዝ ጥቅሶች ትርጉም፣ ሰዋሰዋዊ ትንታኔና አመጣጥ በዝርዝር አብራራልኝ።"
