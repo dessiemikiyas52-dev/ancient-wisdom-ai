@@ -3,16 +3,19 @@ import os
 import time
 from google import genai
 from google.genai import types
+from gtts import gTTS
+from PIL import Image, ImageDraw
+from moviepy import ImageClip, AudioFileClip
 
 # 1. የገጽ ማስተካከያ (Page Configuration)
-st.set_page_config(page_title="EduAI - Software Engineering Tutor", page_icon="💻", layout="wide")
+st.set_page_config(page_title="EduAI - SE Platform", page_icon="💻", layout="wide")
 
-# እጅግ ዘመናዊ፣ ጸጥ ያለ እና ማራኪ የቴክኖሎጂ ገጽታ ዲዛይን (Sleek Tech Dark Theme)
+# የቴክኖሎጂ ገጽታ ዲዛይን (Sleek Tech Dark Theme)
 st.markdown("""
     <style>
     .stApp {
-        background-color: #0f172a !important; /* Deep Slate dark background */
-        color: #f8fafc !important; /* Off-white text */
+        background-color: #0f172a !important; 
+        color: #f8fafc !important; 
         font-family: 'Inter', sans-serif;
     }
     section[data-testid="stSidebar"] {
@@ -58,14 +61,12 @@ if not st.session_state.logged_in:
     password_input = st.text_input("Password (የይለፍ ቃል)፦", type="password")
     
     if st.button("Sign In"):
-        # አድሚን (ባለቤቱ/ሚኪያስ) መጽሐፍት የሚጭንበት አካውንት
         if username_input.lower() == "admin" and password_input == "admin123":
             st.session_state.logged_in = True
             st.session_state.role = "admin"
             st.success("Welcome back, Admin Mikias! Redirecting to Management Panel...")
             time.sleep(1)
             st.rerun()
-        # ተማሪዎች ገብተው ብቻ የሚማሩበት አካውንት
         elif username_input.lower() == "student" and password_input == "student123":
             st.session_state.logged_in = True
             st.session_state.role = "student"
@@ -113,6 +114,7 @@ if st.session_state.role == "admin":
         st.warning("⚠️ እባክህ ፋይሉን ሰርቨር ላይ ለመጫን የ Gemini API Key አስገባ።")
         st.stop()
 
+    # መጽሐፉን ወደ ጉግል ሰርቨር መጫን
     if st.session_state.file_ref is None:
         with st.spinner("መጽሐፉን በማንበብ እና በማዘጋጀት ላይ ነው..."):
             try:
@@ -142,6 +144,11 @@ else:
         st.stop()
         
     st.success(f"📖 Active Course: {st.session_state.file_name}")
+    
+    # መምህሩ ያዘጋጀው ቪዲዮ ካለ ለተማሪዎች ማሳየት
+    if os.path.exists("lecture.mp4"):
+        st.markdown("### 🎬 Instructor's Video Lecture")
+        st.video("lecture.mp4")
 
     st.markdown("### 🎓 Quick Study Options")
     col1, col2, col3 = st.columns(3)
