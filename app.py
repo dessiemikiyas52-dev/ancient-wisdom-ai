@@ -103,7 +103,8 @@ if st.session_state.role == "admin":
     if uploaded_file is not None and uploaded_file.name != st.session_state.file_name:
         st.session_state.file_ref = None
         st.session_state.file_name = uploaded_file.name
-        st.session_state.chat_history = []if not uploaded_file:
+        st.session_state.chat_history = []
+        if not uploaded_file:
         st.info("👈 እባክህ ለተማሪዎች የሚሆን መጽሐፍ በመጫን ኮርሱን አዘጋጅ።")
         st.stop()
         
