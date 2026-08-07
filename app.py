@@ -5,69 +5,43 @@ from google import genai
 from google.genai import types
 
 # 1. የገጽ ማስተካከያ (Page Configuration)
-st.set_page_config(page_title="Ancient Wisdom AI Assistant", page_icon="📜", layout="wide")
+st.set_page_config(page_title="EduAI - Software Engineering Tutor", page_icon="💻", layout="wide")
 
-# የጥንታዊ ብራና እና የአቡሻህር ገጽታ ውበት (Parchment & Ancient Theme UI)
+# እጅግ ዘመናዊ፣ ጸጥ ያለ እና ማራኪ የቴክኖሎጂ ገጽታ ዲዛይን (Sleek Tech Dark Theme)
 st.markdown("""
     <style>
-    /* የዋናው ገጽ የበስተጀርባ የብራና ቀለም */
     .stApp {
-        background-color: #f6eedb !important; 
-        color: #2e1a05 !important;
-        font-family: 'Georgia', serif;
+        background-color: #0f172a !important; /* Deep Slate dark background */
+        color: #f8fafc !important; /* Off-white text */
+        font-family: 'Inter', sans-serif;
     }
-    /* የጎን ማውጫ (Sidebar) ውበትና ቀለም */
     section[data-testid="stSidebar"] {
-        background-color: #e6d5b3 !important;
-        border-right: 2px solid #8c6239;
+        background-color: #1e293b !important;
+        border-right: 1px solid #334155;
     }
-    /* የውይይት ሳጥኖች (Chat Messages) ውበት */
     div[data-testid="stChatMessage"] {
-        background-color: #fbf7ed !important;
-        border: 1px solid #d4c3a3;
+        background-color: #1e293b !important;
+        border: 1px solid #334155;
         border-radius: 12px;
-        box-shadow: 1px 1px 5px rgba(0,0,0,0.05);
     }
-    /* ርዕሶች እና ጽሑፎች */
     h1, h2, h3 {
-        color: #5c3a21 !important;
-        font-family: 'Georgia', serif;
+        color: #38bdf8 !important; /* Bright blue headers */
     }
-    /* በጎን በኩል ያሉ አዝራሮች (Quick Buttons) ውበት */
     .stButton>button {
-        background-color: #8c6239 !important;
+        background-color: #0284c7 !important;
         color: white !important;
-        border-radius: 8px !important;
-        border: 1px solid #5c3a21 !important;
         width: 100%;
-        text-align: left;
+        border-radius: 8px;
+        border: none;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# 2. የጎን ማስተካከያ ሳጥን (Sidebar Settings)
-st.sidebar.title("📜 የጥንታዊ ብራና መቆጣጠሪያ")
-st.sidebar.write("እዚህ ጋር ማስተካከያዎችን ያድርጉ።")
-
-# አዲሱ ብልህ ኮድ (Smart API Key Loader) - በመጀመሪያ በሰርቨሩ ውስጥ የተደበቀ ቁልፍ ካለ ይፈትሻል
-api_key = os.environ.get("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else None
-
-# የተደበቀ ቁልፍ ከሌለ (ለምሳሌ በኮምፒውተርህ ላይ ስትሞክረው) ተጠቃሚው እንዲያስገባ ይጠይቃል
-if not api_key:
-    api_key = st.sidebar.text_input("Enter Gemini API Key:", type="password")
-else:
-    st.sidebar.success("🔑 AI Engine Active!")
-
-uploaded_file = st.sidebar.file_uploader("የጥንታዊ መጻሕፍት/ብራናዎችን ይጫኑ (PDF/TXT):", type=["pdf", "txt"])
-
-# የባለቤትነት ክሬዲት (Developer Credit)
-st.sidebar.markdown("""
----
-💻 Developed by Mikias  
-*የጥንታውያን አባቶች እውቀት በዘመናዊ ቴክኖሎጂ*
-""")
-
-# 3. የውይይት ማህደረ ትውስታ (Initialize Session Memory)
+# 2. የውይይትና የተጠቃሚ ማህደረ ትውስታ (Initialize Session States)
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "role" not in st.session_state:
+    st.session_state.role = ""  # 'admin' ወይም 'student'
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "file_ref" not in st.session_state:
@@ -75,136 +49,143 @@ if "file_ref" not in st.session_state:
 if "file_name" not in st.session_state:
     st.session_state.file_name = ""
 
-# አዲስ ፋይል ከተጫነ የድሮውን ማህደረ ትውስታ ማጽዳት
-if uploaded_file is not None and uploaded_file.name != st.session_state.file_name:
-    st.session_state.file_ref = None
-    st.session_state.file_name = uploaded_file.name
+# 3. 🔐 የተጠቃሚዎች መግቢያ በር (LOGIN SYSTEM)
+if not st.session_state.logged_in:
+    st.title("💻 EduAI - Software Engineering Learning Portal")
+    st.write("Welcome! Please sign in with your credentials to access your courses.")
+    
+    username_input = st.text_input("Username (የተጠቃሚ ስም)፦")
+    password_input = st.text_input("Password (የይለፍ ቃል)፦", type="password")
+    
+    if st.button("Sign In"):
+        # አድሚን (ባለቤቱ/ሚኪያስ) መጽሐፍት የሚጭንበት አካውንት
+        if username_input.lower() == "admin" and password_input == "admin123":
+            st.session_state.logged_in = True
+            st.session_state.role = "admin"
+            st.success("Welcome back, Admin Mikias! Redirecting to Management Panel...")
+            time.sleep(1)
+            st.rerun()
+        # ተማሪዎች ገብተው ብቻ የሚማሩበት አካውንት
+        elif username_input.lower() == "student" and password_input == "student123":
+            st.session_state.logged_in = True
+            st.session_state.role = "student"
+            st.success("Login successful! Welcome to your Software Engineering course...")
+            time.sleep(1)
+            st.rerun()
+        else:
+            st.error("⚠️ Invalid credentials. Try 'admin'/'admin123' or 'student'/'student123'.")
+    st.stop()
+
+# --- 💻 ዋናው መድረክ (የሚታየው ሎግ-ኢን ሲገባ ብቻ ነው) ---
+
+st.sidebar.title(f"👤 {st.session_state.role.capitalize()} Portal")
+if st.sidebar.button("Logout (ውጣ)"):
+    st.session_state.logged_in = False
+    st.session_state.role = ""
     st.session_state.chat_history = []
+    st.session_state.file_ref = None
+    st.session_state.file_name = ""
+    st.rerun()
 
-# 4. ዋናው ገጽታ (Main Panel)
-st.title("📜 የጥንታውያን አባቶች እውቀትና መንፈሳዊ ረዳት")
-st.subheader("Ancient Wisdom & Spiritual AI Assistant (by Mikias)")
-st.write("የተጫኑ ጥንታዊ የብራና መጻሕፍትን፣ የአቡሻህር የዘመን አቆጣጠርንና የግዕዝ ጥቅሶችን ለመተንተን ከታች ይጠይቁ።")
+api_key = os.environ.get("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else None
 
-# መጽሐፍ ካልተጫነ እዚህ ጋር ይቆማል (Guard Clause 1)
-if not uploaded_file:
-    st.info("👈 እባክህ መጀመሪያ በጎን በኩል (Settings Panel) PDF ወይም TXT መጽሐፍ በመጫን ጀምር።")
-    st.stop()
-
-# API Key ካልገባ ማስጠንቀቂያ መስጠት (Guard Clause 2)
 if not api_key:
-    st.warning("⚠️ እባክህ መጽሐፉን ሰርቨር ላይ ለመጫን በጎን በኩል (Settings Panel) የ Gemini API Key አስገባ።")
-    st.stop()
+    api_key = st.sidebar.text_input("Enter Gemini API Key:", type="password")
+else:
+    st.sidebar.success("🔑 AI Engine Active!")
 
-# 5. መጽሐፉን ወደ ጉግል ሰርቨር መጫን (በአንድ ፋይል አንድ ጊዜ ብቻ - የስም ስህተትን ለመከላከል የተስተካከለ)
-if st.session_state.file_ref is None:
-    with st.spinner("መጽሐፉን ወደ Google AI Cloud በመጫን ላይ ነው..."):
-        try:
-            # የፋይሉን መድረሻ (.pdf ወይም .txt) መለየት
-            file_extension = os.path.splitext(uploaded_file.name)[1]
-            
-            # ዊንዶውስ የአማርኛ ስሞችን ሲያነብ እንዳይሳሳት ስሙን ወደ እንግሊዝኛ 'temp_upload' መቀየር
-            temp_filename = f"temp_upload{file_extension}"
-            
-            # ፋይሉን በጊዜያዊነት መጻፍ
-            with open(temp_filename, "wb") as f:
-                f.write(uploaded_file.getbuffer())# የጉግል AI ደንበኛን መፍጠር እና ፋይሉን መጫን
-            client = genai.Client(api_key=api_key)
-            uploaded_file_ref = client.files.upload(file=temp_filename)
-            
-            st.session_state.file_ref = uploaded_file_ref
-            
-            # ጊዜያዊ ፋይሉን ማጥፋት
-            if os.path.exists(temp_filename):
-                os.remove(temp_filename)
+# 🅰️ አድሚን ክፍል (መጻሕፍት መጫኛ)
+if st.session_state.role == "admin":
+    st.title("⚙️ Admin Management Panel (ባለቤት/ሚኪያስ)")
+    st.write("እዚህ ላይ መጽሐፍትን በመጫን ለተማሪዎችህ ኮርሶችን ማዘጋጀት ትችላለህ።")
+    uploaded_file = st.file_uploader("የማስተማሪያ መጽሐፍ ይጫኑ (PDF/TXT):", type=["pdf", "txt"])
+    
+    if uploaded_file is not None and uploaded_file.name != st.session_state.file_name:
+        st.session_state.file_ref = None
+        st.session_state.file_name = uploaded_file.name
+        st.session_state.chat_history = []if not uploaded_file:
+        st.info("👈 እባክህ ለተማሪዎች የሚሆን መጽሐፍ በመጫን ኮርሱን አዘጋጅ።")
+        st.stop()
+        
+    if not api_key:
+        st.warning("⚠️ እባክህ ፋይሉን ሰርቨር ላይ ለመጫን የ Gemini API Key አስገባ።")
+        st.stop()
+
+    if st.session_state.file_ref is None:
+        with st.spinner("መጽሐፉን በማንበብ እና በማዘጋጀት ላይ ነው..."):
+            try:
+                file_extension = os.path.splitext(uploaded_file.name)[1]
+                temp_filename = f"temp_upload{file_extension}"
+                with open(temp_filename, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
                 
-            st.sidebar.success(f"በተሳካ ሁኔታ ተጭኗል: {st.session_state.file_name}")
-        except Exception as e:
-            st.error(f"Error uploading book to Gemini: {e}")
-            st.stop()
+                client = genai.Client(api_key=api_key)
+                uploaded_file_ref = client.files.upload(file=temp_filename)
+                st.session_state.file_ref = uploaded_file_ref
+                
+                if os.path.exists(temp_filename):
+                    os.remove(temp_filename)
+                st.success(f"📚 ኮርሱ በተሳካ ሁኔታ ተዘጋጅቷል! መጽሐፍ፦ {st.session_state.file_name}")
+            except Exception as e:
+                st.error(f"Error reading textbook: {e}")
+                st.stop()
 
-st.success(f"📜 Manuscript '{st.session_state.file_name}' is loaded! ከታች ጥያቄ መጠየቅ ወይም የጎን አማራጮችን መጠቀም ትችላለህ።")
-
-# 6. በአንድ ጠቅታ የሚሰሩ የጥንታዊ ጥያቄዎች አማራጭ (Quick Spiritual Buttons)
-st.markdown("### ✨ ፈጣን የውይይት መጀመሪያዎች (Quick Queries)")
-col1, col2, col3 = st.columns(3)
-
-clicked_query = None
-
-with col1:
-    if st.button("📜 የግዕዝ ጽሑፍ ትንታኔና ትርጉም"):
-        clicked_query = "በዚህ መጽሐፍ ውስጥ የሚገኙትን ዋና ዋና የግዕዝ ጥቅሶች ትርጉም፣ ሰዋሰዋዊ ትንታኔና አመጣጥ በዝርዝር አብራራልኝ።"
-with col2:
-    if st.button("🕊️ የጽሑፉ መንፈሳዊ ምስጢርና ትርጓሜ"):
-        clicked_query = "የዚህን መጽሐፍ/ጽሑፍ ጥልቅ መንፈሳዊ ምስጢር፣ ምሳሌያዊ አነጋገሮችና የቀደሙ አባቶች ትርጓሜ በሰፊው አብራራልኝ።"
-with col3:
-    if st.button("🌌 ጥንታዊ ጥበብ (አቡሻህር) እና ዘመናዊ ሳይንስ"):
-        clicked_query = "በዚህ መጽሐፍ ውስጥ የሚገኘውን ጥንታዊ እውቀት (ለምሳሌ እንደ አቡሻህር ያሉ የዘመንና የስነ-ኮከብ ስሌቶች) ከዘመናዊው ሳይንስና ቴክኖሎጂ ጋር በማነጻጸር አብራራልኝ።"
-
-# ያለፉ የውይይት መልዕክቶችን ማሳየት
-for role, message in st.session_state.chat_history:
-    with st.chat_message(role):
-        st.write(message)
-
-# የጥያቄ መጻፊያ ሳጥን (Chat Input Box)
-user_query = st.chat_input("Ask a question about the book...")
-
-# ፈጣን አዝራር ከተጫነ እሱን እንደ መደበኛ ጥያቄ መውሰድ
-if clicked_query:
-    user_query = clicked_query
-
-# ተጠቃሚው ጥያቄ ካልጻፈ እዚህ ጋር ይቆማል (Guard Clause 3)
-if not user_query:
-    st.stop()
-
-# የተጠቃሚውን ጥያቄ በስክሪኑ ላይ ማሳየት እና ማዳን
-if not clicked_query:  # ለአዝራሮች ደግመን እንዳናሳይ
-    with st.chat_message("user"):
-        st.write(user_query)
-st.session_state.chat_history.append(("user", user_query))
-
-# 7. የ AI ረዳቱን ምላሽ ማግኘት (በአውቶማቲክ የ 503 ስህተት መከላከያ)
-with st.spinner("በመተንተን ላይ ነው..."):
-    max_retries = 3
+# 🅱️ ተማሪዎች ገጽ
+else:
+    st.title("🎓 Students E-Learning Dashboard")
+    st.write("እንኳን በደህና መጣህ! እዚህ ገጽ ላይ መምህርህ ያዘጋጀልህን ኮርስ መማር ትችላለህ።")
     
-    # ጀሚኒ እራሱን በሚኪያስ ረዳትነት እንዲያስተዋውቅና በጥልቅ መንፈሳዊ እውቀት እንዲመልስ የተደረገ ትዕዛዝ (System Prompt)
-    system_prompt = """
-    You are 'Mikias's Ancient Wisdom AI Assistant', an exceptionally wise and respectful scholar in 
-    ancient Ethiopian manuscripts, Orthodox Christian theology, Ge'ez language (ግዕዝ), and classical 
-    computus/astronomy (አቡሻህር - Abushahar). 
-    
-    Your goal is to help the user translate, analyze, and deeply understand the uploaded manuscripts or books.
-    Always connect this ancient, timeless wisdom with modern life, science, and technology in an insightful, positive way.
-    Always write with deep respect, humility, and high academic/spiritual accuracy. 
-    You are fully capable of reading and translating Ge'ez scripts into modern Amharic or English.
-    """
-    
-    for attempt in range(max_retries):
+    if st.session_state.file_ref is None:
+        st.warning("⏳ መምህሩ እስካሁን ምንም አይነት የማስተማሪያ መጽሐፍ አልጫነም። እባክህ መምህሩ ኮርሱን እስኪያዘጋጅ ጠብቅ።")
+        st.stop()
+        
+    st.success(f"📖 Active Course: {st.session_state.file_name}")
+
+    st.markdown("### 🎓 Quick Study Options")
+    col1, col2, col3 = st.columns(3)
+    clicked_query = None
+
+    with col1:
+        if st.button("📝 Generate Course Syllabus"):
+            clicked_query = "Based on this textbook, generate a structured week-by-week Software Engineering study syllabus."
+    with col2:
+        if st.button("❓ Create a Practice Quiz"):
+            clicked_query = "Create 3 multiple-choice questions from the book to test my understanding of Software Engineering."
+    with col3:
+        if st.button("🔑 Explain Core Concepts"):
+            clicked_query = "Summarize the top 5 most important Software Engineering concepts explained in this book."
+
+    for role, message in st.session_state.chat_history:
+        with st.chat_message(role):
+            st.write(message)
+
+    user_query = st.chat_input("የማይገባዎትን የሶፍትዌር ኢንጂነሪንግ ጥያቄ እዚህ ይጠይቁ...")
+    if clicked_query:
+        user_query = clicked_query
+
+    if not user_query:
+        st.stop()
+
+    if not clicked_query:
+        with st.chat_message("user"):
+            st.write(user_query)
+    st.session_state.chat_history.append(("user", user_query))
+
+    with st.spinner("Tutor is thinking..."):
         try:
             client = genai.Client(api_key=api_key)
-            
-            config = types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                temperature=0.3
-            )
-            
-            prompt = f"Using the provided manuscript context, answer this question: {user_query}"
-            
+            system_prompt = """
+            You are a world-class Professor of Software Engineering. 
+            Your goal is to teach the user software engineering principles based strictly on the uploaded book.
+            """
+            config = types.GenerateContentConfig(system_instruction=system_prompt, temperature=0.3)
             response = client.models.generate_content(
                 model='gemini-3.5-flash',
-                contents=[st.session_state.file_ref, prompt],
+                contents=[st.session_state.file_ref, user_query],
                 config=config
             )
-            
             with st.chat_message("assistant"):
                 st.write(response.text)
             st.session_state.chat_history.append(("assistant", response.text))
-            break
-            
         except Exception as e:
-            if ("503" in str(e) or "overloaded" in str(e).lower()) and (attempt < max_retries - 1):
-                st.warning(f"⚠️ ሰርቨሩ ስራ በዝቶበታል። በ3 ሰከንድ ውስጥ በድጋሚ ይሞከራል... (ሙከራ {attempt + 1}/{max_retries})")
-                time.sleep(3)
-            else:
-                st.error(f"AI Error: {e}")
-                break
+            st.error(f"AI Error: {e}")
