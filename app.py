@@ -64,7 +64,7 @@ if not st.session_state.logged_in:
         if username_input.lower() == "admin" and password_input == "admin123":
             st.session_state.logged_in = True
             st.session_state.role = "admin"
-            st.success("Welcome back, Admin Mikias! Redirecting to Management Panel...")
+            st.success("Welcome back, Admin Mikias! Redirecting...")
             time.sleep(1)
             st.rerun()
         elif username_input.lower() == "student" and password_input == "student123":
@@ -95,10 +95,49 @@ if not api_key:
 else:
     st.sidebar.success("🔑 AI Engine Active!")
 
-# 🅰️ አድሚን ክፍል (መጻሕፍት መጫኛ)
+# 🎥 ቪዲዮ በራስ-ሰር የመፍጠሪያ የፓይተን ፈንክሽን (Helper Function)
+def generate_ai_video(script_text, slide_title, output_filename="lecture.mp4"):
+    # ሀ. የድምፅ ፋይል በ gTTS ማዘጋጀት
+    tts = gTTS(text=script_text, lang='en')
+    audio_filename = "temp_lecture.mp3"
+    tts.save(audio_filename)
+    
+    # ለ. ማራኪ የስላይድ ምስል በ Pillow መሳል
+    img = Image.new('RGB', (1280, 720), color='#0f172a')
+    draw = ImageDraw.Draw(img)
+    
+    # ጽሑፎችን በጥቁሩ ሰሌዳ ላይ መሳል
+    draw.text((100, 100), "EduAI Video Lecture", fill="#38bdf8")
+    draw.text((100, 250), slide_title[:50], fill="#f8fafc")
+    draw.text((100, 350), "AI Generated Software Engineering Course", fill="#94a3b8")
+    
+    image_filename = "temp_slide.png"
+    img.save(image_filename)
+    
+    # ሐ. ድምፅና ምስሉን በ MoviePy አዋህዶ ቪዲዮ ማምረት
+    audio_clip = AudioFileClip(audio_filename)
+    duration = audio_clip.duration
+    
+    video_clip = ImageClip(image_filename).with_duration(duration)
+    video_clip = video_clip.with_audio(audio_clip)
+    
+    # ቪዲዮውን ወደ mp4 ፋይል መጻፍ
+    video_clip.write_videofile(output_filename, fps=24, codec="libx264")
+    
+    # ክሊፖችን መዝጋት
+    audio_clip.close()
+    video_clip.close()
+    
+    # ጊዜያዊ ፋይሎችን ማጥፋት
+    if os.path.exists(audio_filename):
+        os.remove(audio_filename)
+    if os.path.exists(image_filename):
+        os.remove(image_filename)
+
+# 🅰️ አድሚን ክፍል (መጻሕፍት መጫኛ እና ቪዲዮ ማዘጋጃ)
 if st.session_state.role == "admin":
     st.title("⚙️ Admin Management Panel (ባለቤት/ሚኪያስ)")
-    st.write("እዚህ ላይ መጽሐፍትን በመጫን ለተማሪዎችህ ኮርሶችን ማዘጋጀት ትችላለህ።")
+    st.write("እዚህ ላይ መጽሐፍትን በመጫን እና የ AI ቪዲዮ ትምህርቶችን ማመንጨት ትችላለህ።")
     uploaded_file = st.file_uploader("የማስተማሪያ መጽሐፍ ይጫኑ (PDF/TXT):", type=["pdf", "txt"])
     
     if uploaded_file is not None and uploaded_file.name != st.session_state.file_name:
@@ -107,8 +146,8 @@ if st.session_state.role == "admin":
         st.session_state.chat_history = []
 
     if not uploaded_file:
-         st.info("👈 እባክህ ለተማሪዎች የሚሆን መጽሐፍ በመጫን ኮርሱን አዘጋጅ።")
-         st.stop()
+        st.info("👈 እባክህ ለተማሪዎች የሚሆን መጽሐፍ በመጫን ኮርሱን አዘጋጅ።")
+        st.stop()
         
     if not api_key:
         st.warning("⚠️ እባክህ ፋይሉን ሰርቨር ላይ ለመጫን የ Gemini API Key አስገባ።")
@@ -133,6 +172,31 @@ if st.session_state.role == "admin":
             except Exception as e:
                 st.error(f"Error reading textbook: {e}")
                 st.stop()
+    else:
+        st.success(f"📚 Active Course Material: {st.session_state.file_name}")
+        
+        # 🎥 ቪዲዮ በራስ-ሰር የመፍጠሪያ አዝራር (AI Video Generation Button)
+        st.markdown("### 🎥 AI Video Lecture Studio")
+        if st.button("🎬 Generate AI Video Lecture (የቪዲዮ ማስተማሪያ በ AI አዘጋጅ)"):
+            with st.spinner("AIው ጽሑፉን እያነበበ ቪዲዮ እያዘጋጀ ነው (ጥቂት ሰከንዶች ይወስዳል)..."):
+                try:
+                    client = genai.Client(api_key=api_key)
+                    # ጀሚኒ አጭር የቪዲዮ ንግግር እንዲጽፍ ማዘዝ
+                    script_prompt = "Write a very short 20-word educational video voiceover script introducing the first chapter of this book."
+                    response = client.models.generate_content(
+                        model='gemini-3.5-flash',
+                        contents=[st.session_state.file_ref, script_prompt]
+                    )
+                    
+                    # ቪዲዮውን ማምረት
+                    generate_ai_video(response.text, st.session_state.file_name)
+                    st.success("🎉 የቪዲዮ ማስተማሪያው በራስ-ሰር ተዘጋጅቷል!")
+                except Exception as e:
+                    st.error(f"Error generating video: {e}")
+        
+        # ቪዲዮው ከተመረተ ማሳየት
+        if os.path.exists("lecture.mp4"):
+            st.video("lecture.mp4")
 
 # 🅱️ ተማሪዎች ገጽ
 else:
