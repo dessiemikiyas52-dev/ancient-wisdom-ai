@@ -25,7 +25,7 @@ st.markdown("""
         border-radius: 12px;
     }
     h1, h2, h3 {
-        color: #38bdf8 !important; /* Bright blue headers */
+        color: #38bdf8 !important; 
     }
     .stButton>button {
         background-color: #0284c7 !important;
@@ -104,9 +104,10 @@ if st.session_state.role == "admin":
         st.session_state.file_ref = None
         st.session_state.file_name = uploaded_file.name
         st.session_state.chat_history = []
-        if not uploaded_file:
-        st.info("👈 እባክህ ለተማሪዎች የሚሆን መጽሐፍ በመጫን ኮርሱን አዘጋጅ።")
-        st.stop()
+
+    if not uploaded_file:
+         st.info("👈 እባክህ ለተማሪዎች የሚሆን መጽሐፍ በመጫን ኮርሱን አዘጋጅ።")
+         st.stop()
         
     if not api_key:
         st.warning("⚠️ እባክህ ፋይሉን ሰርቨር ላይ ለመጫን የ Gemini API Key አስገባ።")
