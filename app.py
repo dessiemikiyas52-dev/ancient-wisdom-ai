@@ -77,7 +77,7 @@ if not st.session_state.logged_in:
             st.error("⚠️ Invalid credentials. Try 'admin'/'admin123' or 'student'/'student123'.")
     st.stop()
 
-# --- 💻 ዋናው መድረክ (የሚታየው ሎግ-ኢን ሲገባ ብቻ ነው) ---
+# --- 💻 ዋናው መድረክ ---
 
 st.sidebar.title(f"👤 {st.session_state.role.capitalize()} Portal")
 if st.sidebar.button("Logout (ውጣ)"):
@@ -95,40 +95,32 @@ if not api_key:
 else:
     st.sidebar.success("🔑 AI Engine Active!")
 
-# 🎥 ቪዲዮ በራስ-ሰር የመፍጠሪያ የፓይተን ፈንክሽን (Helper Function)
+# 🎥 ቪዲዮ በራስ-ሰር የመፍጠሪያ የፓይተን ፈንክሽን
 def generate_ai_video(script_text, slide_title, output_filename="lecture.mp4"):
-    # ሀ. የድምፅ ፋይል በ gTTS ማዘጋጀት
     tts = gTTS(text=script_text, lang='en')
     audio_filename = "temp_lecture.mp3"
     tts.save(audio_filename)
     
-    # ለ. ማራኪ የስላይድ ምስል በ Pillow መሳል
     img = Image.new('RGB', (1280, 720), color='#0f172a')
     draw = ImageDraw.Draw(img)
     
-    # ጽሑፎችን በጥቁሩ ሰሌዳ ላይ መሳል
     draw.text((100, 100), "EduAI Video Lecture", fill="#38bdf8")
     draw.text((100, 250), slide_title[:50], fill="#f8fafc")
     draw.text((100, 350), "AI Generated Software Engineering Course", fill="#94a3b8")
-    
     image_filename = "temp_slide.png"
     img.save(image_filename)
     
-    # ሐ. ድምፅና ምስሉን በ MoviePy አዋህዶ ቪዲዮ ማምረት
     audio_clip = AudioFileClip(audio_filename)
     duration = audio_clip.duration
     
     video_clip = ImageClip(image_filename).with_duration(duration)
     video_clip = video_clip.with_audio(audio_clip)
     
-    # ቪዲዮውን ወደ mp4 ፋይል መጻፍ
     video_clip.write_videofile(output_filename, fps=24, codec="libx264")
     
-    # ክሊፖችን መዝጋት
     audio_clip.close()
     video_clip.close()
     
-    # ጊዜያዊ ፋይሎችን ማጥፋት
     if os.path.exists(audio_filename):
         os.remove(audio_filename)
     if os.path.exists(image_filename):
@@ -168,35 +160,36 @@ if st.session_state.role == "admin":
                 
                 if os.path.exists(temp_filename):
                     os.remove(temp_filename)
-                st.success(f"📚 ኮርሱ በተሳካ ሁኔታ ተዘጋጅቷል! መጽሐፍ፦ {st.session_state.file_name}")
+                
+                st.success("ኮርሱ በተሳካ ሁኔታ ተዘጋጅቷል!")
+                st.rerun() # ገጹን በራስ-ሰር በማደስ አዝራሮቹ እንዲታዩ ማድረግ 🚀
             except Exception as e:
                 st.error(f"Error reading textbook: {e}")
                 st.stop()
-    else:
-        st.success(f"📚 Active Course Material: {st.session_state.file_name}")
-        
-        # 🎥 ቪዲዮ በራስ-ሰር የመፍጠሪያ አዝራር (AI Video Generation Button)
-        st.markdown("### 🎥 AI Video Lecture Studio")
-        if st.button("🎬 Generate AI Video Lecture (የቪዲዮ ማስተማሪያ በ AI አዘጋጅ)"):
-            with st.spinner("AIው ጽሑፉን እያነበበ ቪዲዮ እያዘጋጀ ነው (ጥቂት ሰከንዶች ይወስዳል)..."):
-                try:
-                    client = genai.Client(api_key=api_key)
-                    # ጀሚኒ አጭር የቪዲዮ ንግግር እንዲጽፍ ማዘዝ
-                    script_prompt = "Write a very short 20-word educational video voiceover script introducing the first chapter of this book."
-                    response = client.models.generate_content(
-                        model='gemini-3.5-flash',
-                        contents=[st.session_state.file_ref, script_prompt]
-                    )
-                    
-                    # ቪዲዮውን ማምረት
-                    generate_ai_video(response.text, st.session_state.file_name)
-                    st.success("🎉 የቪዲዮ ማስተማሪያው በራስ-ሰር ተዘጋጅቷል!")
-                except Exception as e:
-                    st.error(f"Error generating video: {e}")
-        
-        # ቪዲዮው ከተመረተ ማሳየት
-        if os.path.exists("lecture.mp4"):
-            st.video("lecture.mp4")
+
+    # (ሰርቨሩ እንደተጫነ ገጹ Rerun ስለሚሆን በቀጥታ እዚህ ይደርሳል)
+    st.success(f"📚 Active Course Material: {st.session_state.file_name}")
+    
+    # 🎥 ቪዲዮ በራስ-ሰር የመፍጠሪያ አዝራር
+    st.markdown("### 🎥 AI Video Lecture Studio")
+    if st.button("🎬 Generate AI Video Lecture (የቪዲዮ ማስተማሪያ በ AI አዘጋጅ)"):
+        with st.spinner("AIው ጽሑፉን እያነበበ ቪዲዮ እያዘጋጀ ነው (ጥቂት ሰከንዶች ይወስዳል)..."):
+            try:
+                client = genai.Client(api_key=api_key)
+                script_prompt = "Write a very short 20-word educational video voiceover script introducing the first chapter of this book."
+                response = client.models.generate_content(
+                    model='gemini-3.5-flash',
+                    contents=[st.session_state.file_ref, script_prompt]
+                )
+                
+                generate_ai_video(response.text, st.session_state.file_name)
+                st.success("🎉 የቪዲዮ ማስተማሪያው በራስ-ሰር ተዘጋጅቷል!")
+                st.rerun() # ቪዲዮውን ወዲያውኑ ማጫወቻው ላይ ለማሳየት ማደስ 🚀
+            except Exception as e:
+                st.error(f"Error generating video: {e}")
+    
+    if os.path.exists("lecture.mp4"):
+        st.video("lecture.mp4")
 
 # 🅱️ ተማሪዎች ገጽ
 else:
@@ -209,15 +202,13 @@ else:
         
     st.success(f"📖 Active Course: {st.session_state.file_name}")
     
-    # መምህሩ ያዘጋጀው ቪዲዮ ካለ ለተማሪዎች ማሳየት
     if os.path.exists("lecture.mp4"):
         st.markdown("### 🎬 Instructor's Video Lecture")
         st.video("lecture.mp4")
 
     st.markdown("### 🎓 Quick Study Options")
     col1, col2, col3 = st.columns(3)
-    clicked_query = None
-
+    clicked_query = None 
     with col1:
         if st.button("📝 Generate Course Syllabus"):
             clicked_query = "Based on this textbook, generate a structured week-by-week Software Engineering study syllabus."
