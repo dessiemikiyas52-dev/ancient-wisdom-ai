@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import time
+import pypdf
 from google import genai
 from google.genai import types
 from gtts import gTTS
@@ -47,10 +48,14 @@ if "role" not in st.session_state:
     st.session_state.role = ""  # 'admin' ወይም 'student'
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-if "file_ref" not in st.session_state:
-    st.session_state.file_ref = None
+if "book_text" not in st.session_state:
+    st.session_state.book_text = ""
 if "file_name" not in st.session_state:
     st.session_state.file_name = ""
+
+# አዲስ ፋይል ከተጫነ ማደስ
+if "uploaded_file" in st.session_state and st.session_state.file_name != "":
+    pass
 
 # 3. 🔐 የተጠቃሚዎች መግቢያ በር (LOGIN SYSTEM)
 if not st.session_state.logged_in:
@@ -84,7 +89,7 @@ if st.sidebar.button("Logout (ውጣ)"):
     st.session_state.logged_in = False
     st.session_state.role = ""
     st.session_state.chat_history = []
-    st.session_state.file_ref = None
+    st.session_state.book_text = ""
     st.session_state.file_name = ""
     st.rerun()
 
@@ -107,6 +112,7 @@ def generate_ai_video(script_text, slide_title, output_filename="lecture.mp4"):
     draw.text((100, 100), "EduAI Video Lecture", fill="#38bdf8")
     draw.text((100, 250), slide_title[:50], fill="#f8fafc")
     draw.text((100, 350), "AI Generated Software Engineering Course", fill="#94a3b8")
+    
     image_filename = "temp_slide.png"
     img.save(image_filename)
     
@@ -133,7 +139,7 @@ if st.session_state.role == "admin":
     uploaded_file = st.file_uploader("የማስተማሪያ መጽሐፍ ይጫኑ (PDF/TXT):", type=["pdf", "txt"])
     
     if uploaded_file is not None and uploaded_file.name != st.session_state.file_name:
-        st.session_state.file_ref = None
+        st.session_state.book_text = ""
         st.session_state.file_name = uploaded_file.name
         st.session_state.chat_history = []
 
@@ -145,46 +151,48 @@ if st.session_state.role == "admin":
         st.warning("⚠️ እባክህ ፋይሉን ሰርቨር ላይ ለመጫን የ Gemini API Key አስገባ።")
         st.stop()
 
-    # መጽሐፉን ወደ ጉግል ሰርቨር መጫን
-    if st.session_state.file_ref is None:
-        with st.spinner("መጽሐፉን በማንበብ እና በማዘጋጀት ላይ ነው..."):
+    # ጽሑፉን በ pypdf በኩል በፈጣኑ አንብቦ መያዝ (የቶከን ስህተትን ይከላከላል)
+    if st.session_state.book_text == "":
+        with st.spinner("መጽሐፉን በማንበብ እና ጽሑፉን በማዘጋጀት ላይ ነው..."):
             try:
-                file_extension = os.path.splitext(uploaded_file.name)[1]
-                temp_filename = f"temp_upload{file_extension}"
-                with open(temp_filename, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-                
-                client = genai.Client(api_key=api_key)
-                uploaded_file_ref = client.files.upload(file=temp_filename)
-                st.session_state.file_ref = uploaded_file_ref
-                
-                if os.path.exists(temp_filename):
-                    os.remove(temp_filename)
+                if uploaded_file.name.endswith(".pdf"):
+                    pdf_reader = pypdf.PdfReader(uploaded_file)
+                    extracted_text = ""
+                    # ከፍተኛውን የቶከን ገደብ ለመጠበቅ የመጀመሪያዎቹን 100 ገጾች ብቻ ማንበብ
+                    for page in pdf_reader.pages[:100]:
+                        extracted_text += page.extract_text() or ""
+                    st.session_state.book_text = extracted_text
+                else:
+                    st.session_state.book_text = uploaded_file.read().decode("utf-8")
                 
                 st.success("ኮርሱ በተሳካ ሁኔታ ተዘጋጅቷል!")
-                st.rerun() # ገጹን በራስ-ሰር በማደስ አዝራሮቹ እንዲታዩ ማድረግ 🚀
+                st.rerun()
             except Exception as e:
                 st.error(f"Error reading textbook: {e}")
                 st.stop()
 
-    # (ሰርቨሩ እንደተጫነ ገጹ Rerun ስለሚሆን በቀጥታ እዚህ ይደርሳል)
     st.success(f"📚 Active Course Material: {st.session_state.file_name}")
     
     # 🎥 ቪዲዮ በራስ-ሰር የመፍጠሪያ አዝራር
     st.markdown("### 🎥 AI Video Lecture Studio")
     if st.button("🎬 Generate AI Video Lecture (የቪዲዮ ማስተማሪያ በ AI አዘጋጅ)"):
-        with st.spinner("AIው ጽሑፉን እያነበበ ቪዲዮ እያዘጋጀ ነው (ጥቂት ሰከንዶች ይወስዳል)..."):
+        with st.spinner("AIው ጽሑፉን እያነበበ ቪዲዮ እያዘጋጀ ነው..."):
             try:
                 client = genai.Client(api_key=api_key)
-                script_prompt = "Write a very short 20-word educational video voiceover script introducing the first chapter of this book."
+                # መጽሐፉን በአጭሩ ጠቅለል አድርጎ ቪዲዮ እንዲሰራ ማዘዝ
+                script_prompt = f"""
+                Write a very short 20-word educational video voiceover script introducing the first chapter of this book.
+                Book Content:
+                {st.session_state.book_text[:5000]}
+                """
                 response = client.models.generate_content(
                     model='gemini-3.5-flash',
-                    contents=[st.session_state.file_ref, script_prompt]
+                    contents=script_prompt
                 )
                 
                 generate_ai_video(response.text, st.session_state.file_name)
                 st.success("🎉 የቪዲዮ ማስተማሪያው በራስ-ሰር ተዘጋጅቷል!")
-                st.rerun() # ቪዲዮውን ወዲያውኑ ማጫወቻው ላይ ለማሳየት ማደስ 🚀
+                st.rerun()
             except Exception as e:
                 st.error(f"Error generating video: {e}")
     
@@ -196,7 +204,7 @@ else:
     st.title("🎓 Students E-Learning Dashboard")
     st.write("እንኳን በደህና መጣህ! እዚህ ገጽ ላይ መምህርህ ያዘጋጀልህን ኮርስ መማር ትችላለህ።")
     
-    if st.session_state.file_ref is None:
+    if st.session_state.book_text == "":
         st.warning("⏳ መምህሩ እስካሁን ምንም አይነት የማስተማሪያ መጽሐፍ አልጫነም። እባክህ መምህሩ ኮርሱን እስኪያዘጋጅ ጠብቅ።")
         st.stop()
         
@@ -205,10 +213,10 @@ else:
     if os.path.exists("lecture.mp4"):
         st.markdown("### 🎬 Instructor's Video Lecture")
         st.video("lecture.mp4")
-
-    st.markdown("### 🎓 Quick Study Options")
+        st.markdown("### 🎓 Quick Study Options")
     col1, col2, col3 = st.columns(3)
-    clicked_query = None 
+    clicked_query = None
+
     with col1:
         if st.button("📝 Generate Course Syllabus"):
             clicked_query = "Based on this textbook, generate a structured week-by-week Software Engineering study syllabus."
@@ -243,9 +251,19 @@ else:
             Your goal is to teach the user software engineering principles based strictly on the uploaded book.
             """
             config = types.GenerateContentConfig(system_instruction=system_prompt, temperature=0.3)
+            
+            # መጽሐፉን እንደ ቀላል ጽሑፍ ለ AI ማቅረብ (የቶከን ስህተትን ሙሉ በሙሉ ይከላከላል)
+            prompt = f"""
+            Answer the user's question based strictly on this document context. 
+            Context:
+            {st.session_state.book_text[:200000]}
+            
+            Question: {user_query}
+            """
+            
             response = client.models.generate_content(
                 model='gemini-3.5-flash',
-                contents=[st.session_state.file_ref, user_query],
+                contents=prompt,
                 config=config
             )
             with st.chat_message("assistant"):
